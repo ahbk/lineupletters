@@ -55,8 +55,8 @@ class letter:
 
     def contained(self, box):
         return (
-            self.pos.ix > -1
-            and self.pos.iy > -1
+            self.pos.ix > -2
+            and self.pos.iy > -2
             and self.pos.ix < box.ix + 1
             and self.pos.iy < box.iy + 1
         )
@@ -117,8 +117,8 @@ def main(stdscr):
 
     my, mx = stdscr.getmaxyx()
     lc = letterchaos(v(mx, my))
-    lc.insert(letter("↓", v(mx - 100, my / 2 - 11), col=0))
-    lc.insert(letter("↑", v(mx - 100, my / 2 + 11), col=0))
+    lc.insert(letter("↓", v(mx / 2, my / 2 - my / 4 - 1), col=0))
+    lc.insert(letter("↑", v(mx / 2, my / 2 + my / 4 + 1), col=0))
 
     counter = 0
     while True:
@@ -132,12 +132,16 @@ def main(stdscr):
 
         counter += 1
         if counter % 100 == 0:
+            side = random.choice([-1, 1])
             lc.insert(
                 letter(
                     keys[random.randint(0, len(keys) - 1)],
-                    v(mx, my / 2 + random.randint(-10, 10)),
-                    v(-1, 0),
-                    v(0.005, 0),
+                    v(
+                        mx if side == 1 else 1,
+                        my / 2 + random.randint(-int(my / 4), int(my / 4)),
+                    ),
+                    v(side * (-1), 0),
+                    v(side / mx, 0),
                     random.randint(0, colors),
                 )
             )
