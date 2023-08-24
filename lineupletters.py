@@ -9,10 +9,13 @@ import time
 # Play with these keys
 keys = "abcdefghijklmnopqrstuvxyz@."
 
-# at this speed (80=slow, 200=fast).
+# at this speed (50=slow, 200=fast).
 speed = 100
 
-# with these many colors
+# this frequency (50=sparse, 200=overwhelming)
+frequency = 100
+
+# and this many colors (0=black/white)
 colors = 8
 
 # Enjoy!
@@ -127,11 +130,11 @@ def main(stdscr):
         for i in range(colors):
             curses.init_pair(i + 1, i + 1, curses.COLOR_BLACK)
 
-        time.sleep(1 / speed)
+        time.sleep(15 / (speed * mx**0.5))
         lc.tick()
 
         counter += 1
-        if counter % 100 == 0:
+        if counter % int((700 * mx**0.5) / frequency) == 0:
             side = random.choice([-1, 1])
             lc.insert(
                 letter(
