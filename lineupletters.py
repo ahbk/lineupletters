@@ -1,13 +1,8 @@
-import curses, _curses
-import random
-import time
-
-
 # For touch typing enjoyers and aspires,
 # keep the rythm and a line will emerge, maintain the line.
 
 # Play with these keys
-keys = "abcdefghijklmnopqrstuvxyz@."
+keys = "abcdefghijklmnopqrstuvxyz@.;"
 
 # at this speed (50=slow, 200=fast).
 speed = 100
@@ -19,6 +14,10 @@ frequency = 100
 colors = 8
 
 # Enjoy!
+
+import curses, _curses
+import random
+import time
 
 
 class v:
@@ -47,16 +46,17 @@ class letter:
         self, char: str, pos: v, vel: v = v(0, 0), acc: v = v(0, 0), col: int = 1
     ):
         self.char = char
-        self._pos = self.pos = pos
-        self.vel = vel or v(0, 0)
-        self.acc = acc or v(0, 0)
+        self._pos = v(-1, -1)
+        self.pos = pos
+        self.vel = vel
+        self.acc = acc
         self.col = col
 
     def tick(self):
         self.vel += self.acc
         self.pos += self.vel
 
-    def contained(self, box):
+    def contained(self, box: v):
         return (
             self.pos.ix > -2
             and self.pos.iy > -2
@@ -64,26 +64,15 @@ class letter:
             and self.pos.iy < box.iy + 1
         )
 
-    def print(self, erase=" "):
-        args = [
-            (
-                self.pos.iy,
-                self.pos.ix,
-                self.char,
-                self.col,
-            )
-        ]
+    def print(self, erase: str = " "):
+        queue = []
         if self.pos != self._pos:
-            args += [
-                (
-                    self._pos.iy,
-                    self._pos.ix,
-                    erase,
-                    0,
-                )
+            queue = [
+                (self.pos.iy, self.pos.ix, self.char, self.col),
+                (self._pos.iy, self._pos.ix, erase, 0),
             ]
             self._pos = self.pos
-        return args
+        return queue
 
     def __repr__(self):
         return f"{self.char}@{self.pos}"
@@ -104,7 +93,10 @@ class letterchaos:
         self.letters = [letter for letter in self.letters if letter.contained(self.box)]
 
     def clear(self, char: str):
-        self.letters = [letter for letter in self.letters if letter.char != char]
+        for i, l in enumerate(self.letters):
+            if l.char == char:
+                del self.letters[i]
+                break
 
     def print(self):
         queue = []
@@ -120,15 +112,15 @@ def main(stdscr):
 
     my, mx = stdscr.getmaxyx()
     lc = letterchaos(v(mx, my))
-    lc.insert(letter("↓", v(mx / 2, my / 2 - my / 4 - 1), col=0))
-    lc.insert(letter("↑", v(mx / 2, my / 2 + my / 4 + 1), col=0))
+    lc.insert(letter("↓", v(0.5 * mx, 0.25 * my - 1), col=0))
+    lc.insert(letter("↑", v(0.5 * mx, 0.75 * my + 1), col=0))
+
+    for i in range(colors):
+        curses.init_pair(i + 1, i + 1, curses.COLOR_BLACK)
 
     counter = 0
     while True:
         key = stdscr.getch()
-
-        for i in range(colors):
-            curses.init_pair(i + 1, i + 1, curses.COLOR_BLACK)
 
         time.sleep(15 / (speed * mx**0.5))
         lc.tick()
@@ -141,7 +133,7 @@ def main(stdscr):
                     keys[random.randint(0, len(keys) - 1)],
                     v(
                         mx if side == 1 else 1,
-                        my / 2 + random.randint(-int(my / 4), int(my / 4)),
+                        .5 * my + random.randint(-int(0.25 * my), int(0.25 * my)),
                     ),
                     v(side * (-1), 0),
                     v(side / mx, 0),
@@ -152,14 +144,17 @@ def main(stdscr):
         if key > 0 and chr(key) in keys:
             lc.clear(chr(key))
 
-        if key == ord(" "):
+        if key == ord(" "):  # Space to pause
             stdscr.nodelay(0)
             key = stdscr.getch()
             stdscr.nodelay(1)
 
+        if key == 27:  # Esc to exit
+            break
+
         for y, x, l, c in lc.print():
             try:
-                stdscr.addstr(y, x, l, curses.color_pair(c))
+                stdscr.addstr(y, x, l, curses.color_pair(c) | curses.A_BOLD)
             except _curses.error:
                 pass
 
