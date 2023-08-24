@@ -10,7 +10,7 @@ speed = 100
 # this frequency (50=sparse, 200=overwhelming)
 frequency = 100
 
-# and this many colors (0=black/white)
+# and this many colors (1=white only)
 colors = 8
 
 # Enjoy!
@@ -34,17 +34,17 @@ class v:
     def __mul__(self, scalar: float) -> "v":
         return v(scalar * self.x, scalar * self.y)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"({self.ix}, {self.iy})"
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return self.ix == other.ix and self.iy == other.iy
 
 
 class letter:
     def __init__(
         self, char: str, pos: v, vel: v = v(0, 0), acc: v = v(0, 0), col: int = 1
-    ):
+    ) -> None:
         self.char = char
         self._pos = v(-1, -1)
         self.pos = pos
@@ -52,11 +52,11 @@ class letter:
         self.acc = acc
         self.col = col
 
-    def tick(self):
+    def tick(self) -> None:
         self.vel += self.acc
         self.pos += self.vel
 
-    def contained(self, box: v):
+    def contained(self, box: v) -> bool:
         return (
             self.pos.ix > -2
             and self.pos.iy > -2
@@ -64,45 +64,45 @@ class letter:
             and self.pos.iy < box.iy + 1
         )
 
-    def print(self, erase: str = " "):
-        queue = []
+    def queue(self, erase: str = " ") -> list[tuple[int, int, str, int]]:
+        q = []
         if self.pos != self._pos:
-            queue = [
+            q = [
                 (self.pos.iy, self.pos.ix, self.char, self.col),
                 (self._pos.iy, self._pos.ix, erase, 0),
             ]
             self._pos = self.pos
-        return queue
+        return q
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"{self.char}@{self.pos}"
 
 
 class letterchaos:
-    def __init__(self, box: v):
+    def __init__(self, box: v) -> None:
         self.box = box
         self.letters = []
 
-    def insert(self, letter: letter):
+    def insert(self, letter: letter) -> None:
         self.letters.append(letter)
 
-    def tick(self):
+    def tick(self) -> None:
         for letter in self.letters:
             letter.tick()
 
         self.letters = [letter for letter in self.letters if letter.contained(self.box)]
 
-    def clear(self, char: str):
+    def clear(self, char: str) -> None:
         for i, l in enumerate(self.letters):
             if l.char == char:
                 del self.letters[i]
                 break
 
-    def print(self):
-        queue = []
+    def queue(self) -> list[tuple[int, int, str, int]]:
+        q = []
         for letter in self.letters:
-            queue += letter.print()
-        return queue
+            q += letter.queue()
+        return q
 
 
 def main(stdscr):
@@ -128,18 +128,20 @@ def main(stdscr):
         counter += 1
         if counter % int((700 * mx**0.5) / frequency) == 0:
             side = random.choice([-1, 1])
+            k = random.randint(0, len(keys) - 1)
             lc.insert(
                 letter(
-                    keys[random.randint(0, len(keys) - 1)],
+                    keys[k],
                     v(
                         mx if side == 1 else 1,
-                        .5 * my + random.randint(-int(0.25 * my), int(0.25 * my)),
+                        0.5 * my + random.randint(-int(0.25 * my), int(0.25 * my)),
                     ),
                     v(side * (-1), 0),
                     v(side / mx, 0),
-                    random.randint(0, colors),
+                    k % colors,
                 )
             )
+            counter = 0
 
         if key > 0 and chr(key) in keys:
             lc.clear(chr(key))
@@ -152,7 +154,7 @@ def main(stdscr):
         if key == 27:  # Esc to exit
             break
 
-        for y, x, l, c in lc.print():
+        for y, x, l, c in lc.queue():
             try:
                 stdscr.addstr(y, x, l, curses.color_pair(c) | curses.A_BOLD)
             except _curses.error:
