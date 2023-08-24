@@ -4,20 +4,21 @@
 # Play with these keys
 keys = "abcdefghijklmnopqrstuvxyz@.;"
 
-# at this speed (50=slow, 200=fast).
+# at this speed (50=slow, 200=fast)
 speed = 100
 
 # this frequency (50=sparse, 200=overwhelming)
 frequency = 100
 
 # and this many colors (1=white only)
-colors = 8
+colors = 7
 
 # Enjoy!
 
 import curses, _curses
 import random
 import time
+import threading
 
 
 class v:
@@ -105,6 +106,24 @@ class letterchaos:
         return q
 
 
+def insertletter(lc):
+    side = random.choice([-1, 1])
+    k = random.randint(0, len(keys) - 1)
+    lc.insert(
+        letter(
+            keys[k],
+            v(
+                lc.box.ix if side == 1 else 1,
+                0.5 * lc.box.iy
+                + random.randint(-int(0.25 * lc.box.iy), int(0.25 * lc.box.iy)),
+            ),
+            v(side * (-1), 0),
+            v(side / lc.box.ix, 0),
+            k % colors,
+        )
+    )
+
+
 def main(stdscr):
     stdscr.clear()
     curses.curs_set(False)
@@ -115,33 +134,14 @@ def main(stdscr):
     lc.insert(letter("↓", v(0.5 * mx, 0.25 * my - 1), col=0))
     lc.insert(letter("↑", v(0.5 * mx, 0.75 * my + 1), col=0))
 
+    measure = int(512 * (mx**0.5) / frequency)
+
     for i in range(colors):
         curses.init_pair(i + 1, i + 1, curses.COLOR_BLACK)
 
     counter = 0
     while True:
         key = stdscr.getch()
-
-        time.sleep(15 / (speed * mx**0.5))
-        lc.tick()
-
-        counter += 1
-        if counter % int((700 * mx**0.5) / frequency) == 0:
-            side = random.choice([-1, 1])
-            k = random.randint(0, len(keys) - 1)
-            lc.insert(
-                letter(
-                    keys[k],
-                    v(
-                        mx if side == 1 else 1,
-                        0.5 * my + random.randint(-int(0.25 * my), int(0.25 * my)),
-                    ),
-                    v(side * (-1), 0),
-                    v(side / mx, 0),
-                    k % colors,
-                )
-            )
-            counter = 0
 
         if key > 0 and chr(key) in keys:
             lc.clear(chr(key))
@@ -161,6 +161,13 @@ def main(stdscr):
                 pass
 
         stdscr.refresh()
+        time.sleep(16 / (speed * mx**0.5))
+        lc.tick()
+
+        counter += 1
+        if counter % measure == 0:
+            insertletter(lc)
+            counter = 0
 
 
 curses.wrapper(main)
