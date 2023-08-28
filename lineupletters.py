@@ -1,14 +1,16 @@
-# For touch typing enjoyers and aspires,
-# keep the rythm and a line will emerge, maintain the line.
+# Keep the rythm and a line will emerge, maintain the line.
 
 # Play with these keys
 keys = "abcdefghijklmnopqrstuvxyz@.;"
 
-# at this speed (50=slow, 200=fast)
-speed = 100
+# at this speed
+sleep = .01
 
-# this frequency (50=sparse, 200=overwhelming)
+# this frequency
 frequency = 100
+
+# optimize for width
+width = 200
 
 # and this many colors (1=white only)
 colors = 7
@@ -18,7 +20,8 @@ colors = 7
 import curses, _curses
 import random
 import time
-import threading
+import math
+from typing import Callable
 
 
 class v:
@@ -44,18 +47,18 @@ class v:
 
 class letter:
     def __init__(
-        self, char: str, pos: v, vel: v = v(0, 0), acc: v = v(0, 0), col: int = 1
-    ) -> None:
+            self, char: str, pos: v, vel: Callable = None, col: int = 1) -> None:
         self.char = char
         self._pos = v(-1, -1)
         self.pos = pos
         self.vel = vel
-        self.acc = acc
         self.col = col
+        self.counter = 0;
 
     def tick(self) -> None:
-        self.vel += self.acc
-        self.pos += self.vel
+        if not self.vel == None:
+            self.pos = self.vel(self.counter, self.pos)
+        self.counter += 1
 
     def contained(self, box: v) -> bool:
         return (
@@ -106,23 +109,26 @@ class letterchaos:
         return q
 
 
-def insertletter(lc):
-    side = random.choice([-1, 1])
-    k = random.randint(0, len(keys) - 1)
-    lc.insert(
-        letter(
-            keys[k],
-            v(
-                lc.box.ix if side == 1 else 1,
-                0.5 * lc.box.iy
-                + random.randint(-int(0.25 * lc.box.iy), int(0.25 * lc.box.iy)),
-            ),
-            v(side * (-1), 0),
-            v(side / lc.box.ix, 0),
-            k % colors,
-        )
-    )
+    def sendinfromthesides(self):
+        key = random.randint(0, len(keys) - 1)
 
+        def fastslowfast(c, p):
+            t = sleep*c/2 - 1
+            x = ((t**3) + 1)*(self.box.ix/2) + 1
+            return v(x, p.y)
+
+        self.insert(
+            letter(
+                keys[key],
+                v(
+                    self.box.ix,
+                    0.5 * self.box.iy
+                    + random.randint(-int(0.25 * self.box.iy), int(0.25 * self.box.iy)),
+                ),
+                fastslowfast,
+                key % colors,
+            )
+        )
 
 def main(stdscr):
     stdscr.clear()
@@ -133,8 +139,6 @@ def main(stdscr):
     lc = letterchaos(v(mx, my))
     lc.insert(letter("↓", v(0.5 * mx, 0.25 * my - 1), col=0))
     lc.insert(letter("↑", v(0.5 * mx, 0.75 * my + 1), col=0))
-
-    measure = int(512 * (mx**0.5) / frequency)
 
     for i in range(colors):
         curses.init_pair(i + 1, i + 1, curses.COLOR_BLACK)
@@ -161,13 +165,16 @@ def main(stdscr):
                 pass
 
         stdscr.refresh()
-        time.sleep(16 / (speed * mx**0.5))
+        time.sleep(sleep)
         lc.tick()
 
         counter += 1
-        if counter % measure == 0:
-            insertletter(lc)
+        if counter % frequency == 0:
+            lc.sendinfromthesides()
             counter = 0
+        elif counter % int(frequency/2) == 0 and not random.randint(0,4):
+            lc.sendinfromthesides()
+
 
 
 curses.wrapper(main)
